@@ -1,0 +1,1072 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#FDF6EC" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#262220" media="(prefers-color-scheme: dark)">
+<title>なまえノート</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;700&display=swap" rel="stylesheet">
+<style>
+/* ============ ふんわりパステル デザイントークン ============ */
+:root {
+  --bg: #FDF6EC;
+  --card: #FFFFFF;
+  --card-soft: #FBF1E8;
+  --text: #594E46;
+  --text-sub: #857567;
+  --pink: #F3C6CE;
+  --pink-soft: #FAE3E8;
+  --pink-text: #7A4A55;
+  --pink-strong: #C9707F;
+  --mint: #BCE4D3;
+  --mint-soft: #E2F3EC;
+  --mint-text: #285E4A;
+  --beige: #E8E1D9;
+  --beige-text: #665A50;
+  --danger: #C25B5B;
+  --shadow: 0 4px 16px rgba(180, 150, 140, .18);
+  --shadow-sm: 0 2px 8px rgba(180, 150, 140, .12);
+  --border: #EFE3D7;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #262220;
+    --card: #33302C;
+    --card-soft: #3C3833;
+    --text: #F0E9E1;
+    --text-sub: #B8ACA1;
+    --pink: rgba(231, 166, 180, .22);
+    --pink-soft: rgba(231, 166, 180, .12);
+    --pink-text: #F2BCC8;
+    --pink-strong: #E7A6B4;
+    --mint: rgba(159, 214, 195, .20);
+    --mint-soft: rgba(159, 214, 195, .10);
+    --mint-text: #A9DDC9;
+    --beige: rgba(232, 225, 217, .15);
+    --beige-text: #C4B8AC;
+    --danger: #E08585;
+    --shadow: 0 4px 16px rgba(0, 0, 0, .40);
+    --shadow-sm: 0 2px 8px rgba(0, 0, 0, .30);
+    --border: #46413B;
+  }
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  font-family: "Zen Maru Gothic", ui-rounded, "Hiragino Maru Gothic ProN", "Hiragino Sans", "Yu Gothic", sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  min-height: 100dvh;
+  line-height: 1.6;
+}
+
+/* ============ ヘッダー ============ */
+.app-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  padding-top: calc(12px + env(safe-area-inset-top));
+  background: color-mix(in srgb, var(--bg) 88%, transparent);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+}
+.app-title {
+  font-size: 20px;
+  font-weight: 700;
+  flex: 1;
+}
+.back-btn {
+  border: none;
+  background: var(--card);
+  box-shadow: var(--shadow-sm);
+  border-radius: 999px;
+  width: 40px;
+  height: 40px;
+  font-size: 18px;
+  color: var(--text);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.sync-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: var(--text-sub);
+  background: var(--card);
+  border-radius: 999px;
+  padding: 5px 11px;
+  box-shadow: var(--shadow-sm);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.sync-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--beige-text); flex-shrink: 0; }
+.sync-status.synced .sync-dot { background: #6DBD9A; }
+.sync-status.pending .sync-dot { background: var(--pink-strong); }
+
+/* ============ メイン ============ */
+main {
+  padding: 8px 16px 120px;
+  padding-left: calc(16px + env(safe-area-inset-left));
+  padding-right: calc(16px + env(safe-area-inset-right));
+  max-width: 560px;
+  margin: 0 auto;
+}
+
+/* ============ 一覧 ============ */
+.name-card {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: var(--card);
+  border: none;
+  border-radius: 20px;
+  box-shadow: var(--shadow);
+  padding: 16px 20px;
+  margin-bottom: 12px;
+  cursor: pointer;
+  color: var(--text);
+  font-family: inherit;
+  transition: transform .1s;
+}
+.name-card:active { transform: scale(.98); }
+.name-card .reading { font-size: 22px; font-weight: 700; }
+.name-card .kanji-list { font-size: 14px; color: var(--text-sub); margin-top: 2px; }
+.empty-state {
+  text-align: center;
+  color: var(--text-sub);
+  padding: 56px 16px;
+  font-size: 15px;
+}
+.empty-state .emoji { font-size: 44px; display: block; margin-bottom: 12px; }
+.fab {
+  position: fixed;
+  right: 20px;
+  bottom: calc(24px + env(safe-area-inset-bottom));
+  z-index: 20;
+  border: none;
+  background: var(--pink);
+  color: var(--pink-text);
+  font-family: inherit;
+  font-size: 17px;
+  font-weight: 700;
+  border-radius: 999px;
+  padding: 14px 26px;
+  box-shadow: var(--shadow);
+  cursor: pointer;
+}
+.fab:active { transform: scale(.96); }
+.footer-links {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  margin-top: 28px;
+}
+.footer-links a { color: var(--text-sub); font-size: 13px; }
+
+/* ============ 詳細 ============ */
+.detail-reading {
+  font-size: 30px;
+  font-weight: 700;
+  text-align: center;
+  margin: 12px 0 20px;
+}
+.kanji-section {
+  background: var(--card);
+  border-radius: 20px;
+  box-shadow: var(--shadow);
+  padding: 18px 20px;
+  margin-bottom: 16px;
+}
+.kanji-section .kanji-text { font-size: 26px; font-weight: 700; letter-spacing: .1em; }
+.section-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-sub);
+  margin: 14px 0 6px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.section-label::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--pink-strong); }
+.meaning-text, .concern-text { font-size: 14px; white-space: pre-wrap; }
+.diag-rows { display: flex; flex-direction: column; gap: 8px; }
+.diag-row { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.diag-row .group-name { font-size: 12px; color: var(--text-sub); width: 3.2em; flex-shrink: 0; }
+.diag-item { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; }
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  font-size: 14px;
+  font-weight: 700;
+}
+.badge.b-best { background: #F5BFC9; color: #7E3448; }
+.badge.b-good { background: #BCE4D3; color: #285E4A; }
+.badge.b-warn { background: #E8E1D9; color: #665A50; }
+.badge.b-none { background: transparent; border: 1.5px dashed var(--border); color: var(--text-sub); }
+@media (prefers-color-scheme: dark) {
+  .badge.b-best { background: rgba(245,191,201,.25); color: #F2BCC8; }
+  .badge.b-good { background: rgba(188,228,211,.22); color: #A9DDC9; }
+  .badge.b-warn { background: rgba(232,225,217,.15); color: #C4B8AC; }
+}
+.concern-card {
+  background: var(--pink-soft);
+  border-radius: 20px;
+  padding: 16px 20px;
+  margin-bottom: 16px;
+}
+.concern-card .section-label { margin-top: 0; }
+.detail-actions { display: flex; flex-direction: column; gap: 12px; margin-top: 24px; align-items: center; }
+.btn {
+  border: none;
+  font-family: inherit;
+  font-size: 16px;
+  font-weight: 700;
+  border-radius: 14px;
+  padding: 13px 24px;
+  cursor: pointer;
+  min-height: 44px;
+}
+.btn-primary { background: var(--pink); color: var(--pink-text); box-shadow: var(--shadow-sm); width: 100%; }
+.btn-secondary { background: var(--card); color: var(--text); box-shadow: var(--shadow-sm); width: 100%; }
+.btn-mint { background: var(--mint); color: var(--mint-text); box-shadow: var(--shadow-sm); width: 100%; }
+.btn-danger-link {
+  background: none;
+  color: var(--danger);
+  font-size: 13px;
+  font-weight: 400;
+  padding: 10px;
+}
+.btn:active { opacity: .8; }
+.btn:disabled { opacity: .45; cursor: default; }
+
+/* ============ フォーム ============ */
+.form-group { margin-bottom: 20px; }
+.form-label { display: block; font-size: 13px; font-weight: 700; color: var(--text-sub); margin-bottom: 6px; }
+.text-input, .textarea {
+  width: 100%;
+  font-family: inherit;
+  font-size: 16px;
+  color: var(--text);
+  background: var(--card);
+  border: 1.5px solid var(--border);
+  border-radius: 14px;
+  padding: 12px 14px;
+  box-shadow: var(--shadow-sm);
+}
+.text-input:focus, .textarea:focus { outline: 2px solid var(--pink); border-color: transparent; }
+.textarea { resize: vertical; min-height: 72px; }
+.kanji-block {
+  background: var(--card);
+  border-radius: 20px;
+  box-shadow: var(--shadow);
+  padding: 16px;
+  margin-bottom: 16px;
+}
+.kanji-block-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.kanji-block-head .block-title { font-size: 13px; font-weight: 700; color: var(--pink-strong); }
+.remove-kanji {
+  border: none;
+  background: none;
+  color: var(--text-sub);
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+  padding: 6px 8px;
+}
+.diag-group-label { font-size: 12px; font-weight: 700; color: var(--text-sub); margin: 12px 0 4px; }
+.seg-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 4px 0; }
+.seg-row .seg-label { font-size: 14px; }
+.segment { display: flex; gap: 6px; }
+.seg-btn {
+  border: 1.5px solid var(--border);
+  background: var(--card-soft);
+  color: var(--text-sub);
+  font-family: inherit;
+  font-size: 15px;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  cursor: pointer;
+}
+.seg-btn[data-on="1"][data-v="◎"] { background: #F5BFC9; color: #7E3448; border-color: transparent; font-weight: 700; }
+.seg-btn[data-on="1"][data-v="○"] { background: #BCE4D3; color: #285E4A; border-color: transparent; font-weight: 700; }
+.seg-btn[data-on="1"][data-v="△"] { background: #E8E1D9; color: #665A50; border-color: transparent; font-weight: 700; }
+@media (prefers-color-scheme: dark) {
+  .seg-btn[data-on="1"][data-v="◎"] { background: rgba(245,191,201,.30); color: #F2BCC8; }
+  .seg-btn[data-on="1"][data-v="○"] { background: rgba(188,228,211,.26); color: #A9DDC9; }
+  .seg-btn[data-on="1"][data-v="△"] { background: rgba(232,225,217,.20); color: #C4B8AC; }
+}
+.add-kanji-btn { width: 100%; margin-bottom: 20px; }
+.save-bar {
+  position: fixed;
+  left: 0; right: 0; bottom: 0;
+  z-index: 20;
+  display: flex;
+  gap: 12px;
+  padding: 12px 16px;
+  padding-bottom: calc(12px + env(safe-area-inset-bottom));
+  background: color-mix(in srgb, var(--bg) 92%, transparent);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  max-width: 560px;
+  margin: 0 auto;
+}
+.save-bar .btn { flex: 1; }
+
+/* ============ バックアップ・ペアリング ============ */
+.info-card {
+  background: var(--card);
+  border-radius: 20px;
+  box-shadow: var(--shadow);
+  padding: 18px 20px;
+  margin-bottom: 16px;
+}
+.info-card h2 { font-size: 16px; margin-bottom: 8px; }
+.info-card p { font-size: 13px; color: var(--text-sub); margin-bottom: 10px; }
+.mono-area {
+  width: 100%;
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 16px;
+  background: var(--card-soft);
+  color: var(--text);
+  border: 1.5px solid var(--border);
+  border-radius: 14px;
+  padding: 10px;
+  min-height: 120px;
+  resize: vertical;
+}
+.notice-banner {
+  background: var(--pink-soft);
+  color: var(--pink-text);
+  border-radius: 14px;
+  padding: 10px 14px;
+  font-size: 13px;
+  margin-bottom: 12px;
+}
+a { color: var(--pink-strong); }
+.toast {
+  position: fixed;
+  bottom: calc(90px + env(safe-area-inset-bottom));
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--text);
+  color: var(--bg);
+  border-radius: 999px;
+  padding: 9px 18px;
+  font-size: 13px;
+  box-shadow: var(--shadow);
+  z-index: 50;
+  opacity: 0;
+  transition: opacity .25s;
+  pointer-events: none;
+  white-space: nowrap;
+}
+.toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+<header class="app-header" id="header"></header>
+<main id="view"></main>
+<div class="toast" id="toast"></div>
+<script>
+"use strict";
+/* ================= ユーティリティ ================= */
+function esc(s) {
+  return String(s == null ? "" : s)
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+}
+function uuid() {
+  if (window.crypto && crypto.randomUUID) { try { return crypto.randomUUID(); } catch (e) {} }
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
+}
+function showToast(msg) {
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  clearTimeout(showToast._tm);
+  showToast._tm = setTimeout(() => t.classList.remove("show"), 2200);
+}
+
+/* ================= Firebase 設定 =================
+ * docs/firebase-setup.md の手順で取得した firebaseConfig を下に貼り付ける。
+ * null のままでも、アプリは「この端末のみ」モードで完全に動作する。
+ * ※ この設定値は秘密情報ではない（データの保護はセキュリティルールと
+ *    推測不能なルームIDが担う）。 */
+const FIREBASE_CONFIG = null;
+
+const LS_ROOM_KEY = "nazuke.room.v1";
+function getRoomId() {
+  try {
+    const raw = localStorage.getItem(LS_ROOM_KEY);
+    if (!raw) return null;
+    const obj = JSON.parse(raw);
+    return typeof obj.roomId === "string" && obj.roomId ? obj.roomId : null;
+  } catch (e) { return null; }
+}
+function setRoomId(roomId) {
+  try { localStorage.setItem(LS_ROOM_KEY, JSON.stringify({ roomId })); } catch (e) {}
+}
+
+/* ================= 診断項目定義 ================= */
+const DIAG_GROUPS = [
+  { name: "画数", items: [
+    { key: "jinkaku", label: "人格" },
+    { key: "chikaku", label: "地格" },
+    { key: "gaikaku", label: "外格" },
+    { key: "soukaku", label: "総格" },
+  ]},
+  { name: "五行", items: [
+    { key: "gogyoTenkaku", label: "天格" },
+    { key: "gogyoJinkaku", label: "人格" },
+    { key: "gogyoChikaku", label: "地格" },
+  ]},
+  { name: "言霊", items: [
+    { key: "kotodama", label: "言霊" },
+  ]},
+];
+const DIAG_KEYS = DIAG_GROUPS.flatMap(g => g.items.map(i => i.key));
+const DIAG_VALUES = ["◎", "○", "△"];
+
+function emptyDiagnosis() {
+  const d = {};
+  DIAG_KEYS.forEach(k => d[k] = null);
+  return d;
+}
+function normalizeDiagnosis(d) {
+  const out = emptyDiagnosis();
+  if (d && typeof d === "object") {
+    DIAG_KEYS.forEach(k => { if (DIAG_VALUES.includes(d[k])) out[k] = d[k]; });
+  }
+  return out;
+}
+function diagnosisIsEmpty(d) {
+  return !d || DIAG_KEYS.every(k => d[k] == null);
+}
+
+/* ================= スキーマ ================= */
+const SCHEMA_VERSION = 1;
+function migrate(data) {
+  // v1: 素通し（将来のバージョンアップ用フック）
+  if (!data || typeof data !== "object") return { schemaVersion: SCHEMA_VERSION, candidates: [] };
+  return data;
+}
+function normalizeCandidate(c) {
+  if (!c || typeof c !== "object" || typeof c.reading !== "string") return null;
+  return {
+    id: typeof c.id === "string" && c.id ? c.id : uuid(),
+    reading: c.reading,
+    kanjiOptions: Array.isArray(c.kanjiOptions) ? c.kanjiOptions.map(k => ({
+      id: typeof k.id === "string" && k.id ? k.id : uuid(),
+      text: String(k.text || ""),
+      meaning: String(k.meaning || ""),
+      diagnosis: normalizeDiagnosis(k.diagnosis),
+    })).filter(k => k.text) : [],
+    concerns: String(c.concerns || ""),
+    createdAt: typeof c.createdAt === "number" ? c.createdAt : Date.now(),
+    updatedAt: typeof c.updatedAt === "number" ? c.updatedAt : Date.now(),
+  };
+}
+function validateImport(obj) {
+  if (!obj || typeof obj !== "object") return null;
+  const m = migrate(obj);
+  if (!Array.isArray(m.candidates)) return null;
+  return m.candidates.map(normalizeCandidate).filter(Boolean);
+}
+
+/* ================= LocalStore ================= */
+const LS_DATA_KEY = "nazuke.data.v1";
+function createLocalStore() {
+  let candidates = [];
+  let listeners = [];
+  let storageOk = true;
+  let loadWarning = null;
+
+  function persist() {
+    if (!storageOk) return;
+    try {
+      localStorage.setItem(LS_DATA_KEY, JSON.stringify({ schemaVersion: SCHEMA_VERSION, candidates }));
+    } catch (e) {
+      storageOk = false;
+      loadWarning = "この環境ではデータを保存できません（プライベートブラウズ中の可能性があります）";
+    }
+  }
+  function notify() { listeners.forEach(fn => fn(candidates.slice())); }
+
+  return {
+    mode: "local",
+    init() {
+      let raw = null;
+      try { raw = localStorage.getItem(LS_DATA_KEY); }
+      catch (e) { storageOk = false; loadWarning = "この環境ではデータを保存できません"; return; }
+      if (raw == null) return;
+      try {
+        const data = migrate(JSON.parse(raw));
+        candidates = (Array.isArray(data.candidates) ? data.candidates : []).map(normalizeCandidate).filter(Boolean);
+      } catch (e) {
+        // 壊れたデータは退避してから空で起動（黙って上書きしない）
+        try { localStorage.setItem("nazuke.data.corrupt." + Date.now(), raw); } catch (e2) {}
+        loadWarning = "保存データを読み込めませんでした（元データは退避済みです）";
+      }
+    },
+    loadAll() { return candidates.slice(); },
+    getWarning() { return loadWarning; },
+    saveCandidate(c) {
+      const i = candidates.findIndex(x => x.id === c.id);
+      if (i >= 0) candidates[i] = c; else candidates.push(c);
+      persist();
+      notify();
+    },
+    deleteCandidate(id) {
+      candidates = candidates.filter(x => x.id !== id);
+      persist();
+      notify();
+    },
+    replaceAll(cands) {
+      candidates = cands.slice();
+      persist();
+      notify();
+    },
+    subscribe(fn) { listeners.push(fn); },
+  };
+}
+
+/* ================= アプリ状態 ================= */
+let store = createLocalStore();
+const state = { candidates: [], route: { name: "list" } };
+
+function sortedCandidates() {
+  return state.candidates.slice().sort((a, b) => a.createdAt - b.createdAt);
+}
+function findCandidate(id) { return state.candidates.find(c => c.id === id) || null; }
+
+/* ================= ルーター ================= */
+function parseHash() {
+  const h = (location.hash || "#/").replace(/^#/, "");
+  const parts = h.split("/").filter(Boolean);
+  if (parts.length === 0) return { name: "list" };
+  if (parts[0] === "detail" && parts[1]) return { name: "detail", id: parts[1] };
+  if (parts[0] === "new") return { name: "form", id: null };
+  if (parts[0] === "edit" && parts[1]) return { name: "form", id: parts[1] };
+  if (parts[0] === "backup") return { name: "backup" };
+  if (parts[0] === "pair") return { name: "pair", roomId: parts[1] || null };
+  return { name: "list" };
+}
+function isFormRoute() { return state.route.name === "form"; }
+
+window.addEventListener("hashchange", () => {
+  state.route = parseHash();
+  render();
+});
+
+/* ================= 描画 ================= */
+function render() {
+  const view = document.getElementById("view");
+  renderHeader();
+  switch (state.route.name) {
+    case "list": view.innerHTML = listHTML(); break;
+    case "detail": view.innerHTML = detailHTML(); break;
+    case "form": renderForm(view); break;
+    case "backup": view.innerHTML = backupHTML(); bindBackup(view); break;
+    case "pair": view.innerHTML = pairHTML(); bindPair(view); break;
+  }
+  window.scrollTo(0, 0);
+}
+
+function goBack() {
+  if (history.length > 1) history.back(); else location.hash = "#/";
+}
+
+function renderHeader() {
+  const h = document.getElementById("header");
+  const r = state.route;
+  const back = r.name !== "list"
+    ? '<button class="back-btn" onclick="goBack()" aria-label="戻る">←</button>'
+    : "";
+  const titleMap = { list: "なまえノート", detail: "なまえ", form: r.id ? "へんしゅう" : "あたらしいなまえ", backup: "バックアップ", pair: "ふたりで共有" };
+  h.innerHTML = back +
+    '<h1 class="app-title">' + esc(titleMap[r.name] || "なまえノート") + "</h1>" +
+    syncStatusHTML();
+}
+
+function syncStatusHTML() {
+  if (store.mode !== "firestore") {
+    return '<a class="sync-status" href="#/pair"><span class="sync-dot"></span>この端末のみ</a>';
+  }
+  const st = store.syncState();
+  if (!navigator.onLine || st.pending) {
+    return '<a class="sync-status pending" href="#/pair"><span class="sync-dot"></span>オフライン・後で同期</a>';
+  }
+  if (!st.synced) {
+    return '<a class="sync-status" href="#/pair"><span class="sync-dot"></span>接続中…</a>';
+  }
+  return '<a class="sync-status synced" href="#/pair"><span class="sync-dot"></span>同期済み</a>';
+}
+window.addEventListener("online", renderHeader);
+window.addEventListener("offline", renderHeader);
+
+/* ================= 一覧 ================= */
+function listHTML() {
+  const warning = store.getWarning ? store.getWarning() : null;
+  const cands = sortedCandidates();
+  let html = "";
+  if (warning) html += '<div class="notice-banner">' + esc(warning) + "</div>";
+  if (cands.length === 0) {
+    html += '<div class="empty-state"><span class="emoji">🌸</span>「＋ なまえを追加」から<br>名前の候補を登録してみましょう</div>';
+  } else {
+    html += cands.map(c => {
+      const kanji = c.kanjiOptions.map(k => esc(k.text)).join("　");
+      return '<button class="name-card" data-nav="#/detail/' + esc(c.id) + '">' +
+        '<div class="reading">' + esc(c.reading) + "</div>" +
+        (kanji ? '<div class="kanji-list">' + kanji + "</div>" : "") +
+        "</button>";
+    }).join("");
+  }
+  html += '<div class="footer-links"><a href="#/backup">データの書き出し・読み込み</a></div>';
+  html += '<button class="fab" data-nav="#/new">＋ なまえを追加</button>';
+  return html;
+}
+
+/* ================= 詳細 ================= */
+function badgeHTML(v) {
+  if (v === "◎") return '<span class="badge b-best">◎</span>';
+  if (v === "○") return '<span class="badge b-good">○</span>';
+  if (v === "△") return '<span class="badge b-warn">△</span>';
+  return '<span class="badge b-none">−</span>';
+}
+function detailHTML() {
+  const c = findCandidate(state.route.id);
+  if (!c) return '<div class="empty-state"><span class="emoji">🕊️</span>この候補は見つかりませんでした<br>（削除された可能性があります）</div>';
+  let html = '<div class="detail-reading">' + esc(c.reading) + "</div>";
+  c.kanjiOptions.forEach(k => {
+    html += '<div class="kanji-section">';
+    html += '<div class="kanji-text">' + esc(k.text) + "</div>";
+    if (k.meaning) {
+      html += '<div class="section-label">漢字の意味</div><div class="meaning-text">' + esc(k.meaning) + "</div>";
+    }
+    if (!diagnosisIsEmpty(k.diagnosis)) {
+      html += '<div class="section-label">姓名診断</div><div class="diag-rows">';
+      DIAG_GROUPS.forEach(g => {
+        html += '<div class="diag-row"><span class="group-name">' + esc(g.name) + "</span>";
+        g.items.forEach(item => {
+          html += '<span class="diag-item">' + (g.name === "言霊" ? "" : esc(item.label)) + badgeHTML(k.diagnosis[item.key]) + "</span>";
+        });
+        html += "</div>";
+      });
+      html += "</div>";
+    }
+    html += "</div>";
+  });
+  if (c.concerns) {
+    html += '<div class="concern-card"><div class="section-label">懸念点</div><div class="concern-text">' + esc(c.concerns) + "</div></div>";
+  }
+  html += '<div class="detail-actions">' +
+    '<button class="btn btn-primary" data-nav="#/edit/' + esc(c.id) + '">✏️ 編集する</button>' +
+    '<button class="btn btn-danger-link" data-action="delete" data-id="' + esc(c.id) + '">この候補を削除する</button>' +
+    "</div>";
+  return html;
+}
+function deleteCandidateAction(id) {
+  const c = findCandidate(id);
+  if (!c) return;
+  if (!confirm("「" + c.reading + "」を削除しますか？")) return;
+  store.deleteCandidate(id);
+  location.hash = "#/";
+}
+
+// data-nav / data-action の共通ハンドラ（innerHTML 由来の onclick を避ける）
+document.addEventListener("click", e => {
+  const nav = e.target.closest("[data-nav]");
+  if (nav) { location.hash = nav.dataset.nav; return; }
+  const act = e.target.closest("[data-action='delete']");
+  if (act) deleteCandidateAction(act.dataset.id);
+});
+</script>
+<script>
+"use strict";
+/* ================= フォーム ================= */
+function segRowHTML(item, value, groupName) {
+  return '<div class="seg-row"><span class="seg-label">' + esc(item.label) + "</span>" +
+    '<div class="segment" role="radiogroup" aria-label="' + esc(groupName + " " + item.label) + '">' +
+    DIAG_VALUES.map(v =>
+      '<button type="button" class="seg-btn" data-key="' + esc(item.key) + '" data-v="' + v + '" data-on="' + (value === v ? "1" : "0") + '" aria-pressed="' + (value === v) + '">' + v + "</button>"
+    ).join("") +
+    "</div></div>";
+}
+function kanjiBlockHTML(k, idx) {
+  const d = k ? k.diagnosis : emptyDiagnosis();
+  return '<div class="kanji-block" data-kanji-id="' + esc(k ? k.id : uuid()) + '">' +
+    '<div class="kanji-block-head"><span class="block-title">漢字の候補</span>' +
+    '<button type="button" class="remove-kanji">✕ この表記を削除</button></div>' +
+    '<div class="form-group"><label class="form-label">漢字</label>' +
+    '<input type="text" class="text-input f-kanji" placeholder="例：陽翔" value="' + esc(k ? k.text : "") + '"></div>' +
+    '<div class="form-group"><label class="form-label">漢字の意味</label>' +
+    '<textarea class="textarea f-meaning" placeholder="例：&#10;陽…太陽、明るさ&#10;翔…大きく羽ばたく">' + esc(k ? k.meaning : "") + "</textarea></div>" +
+    '<div class="form-label">姓名診断（わかるところだけでOK）</div>' +
+    DIAG_GROUPS.map(g =>
+      '<div class="diag-group-label">' + esc(g.name) + "</div>" +
+      g.items.map(item => segRowHTML(item, d[item.key], g.name)).join("")
+    ).join("") +
+    "</div>";
+}
+function renderForm(view) {
+  const editing = state.route.id ? findCandidate(state.route.id) : null;
+  if (state.route.id && !editing) {
+    view.innerHTML = '<div class="empty-state"><span class="emoji">🕊️</span>この候補は見つかりませんでした</div>';
+    return;
+  }
+  const kanjiBlocks = editing && editing.kanjiOptions.length > 0
+    ? editing.kanjiOptions.map((k, i) => kanjiBlockHTML(k, i)).join("")
+    : kanjiBlockHTML(null, 0);
+  view.innerHTML =
+    '<form id="cand-form" autocomplete="off" onsubmit="return false">' +
+    '<div class="form-group"><label class="form-label">ひらがな読み（必須）</label>' +
+    '<input type="text" class="text-input" id="f-reading" placeholder="例：はると" value="' + esc(editing ? editing.reading : "") + '"></div>' +
+    '<div id="kanji-blocks">' + kanjiBlocks + "</div>" +
+    '<button type="button" class="btn btn-mint add-kanji-btn" id="add-kanji">＋ 漢字の候補を追加</button>' +
+    '<div class="form-group"><label class="form-label">懸念点</label>' +
+    '<textarea class="textarea" id="f-concerns" placeholder="例：同じ読みの子が多いかも">' + esc(editing ? editing.concerns : "") + "</textarea></div>" +
+    "</form>" +
+    '<div class="save-bar">' +
+    '<button type="button" class="btn btn-secondary" id="cancel-btn">キャンセル</button>' +
+    '<button type="button" class="btn btn-primary" id="save-btn">保存する</button>' +
+    "</div>";
+  bindForm(view, editing);
+}
+function bindForm(view, editing) {
+  const form = view.querySelector("#cand-form");
+  const readingInput = view.querySelector("#f-reading");
+  const saveBtn = view.querySelector("#save-btn");
+
+  function updateSaveState() { saveBtn.disabled = readingInput.value.trim() === ""; }
+  readingInput.addEventListener("input", updateSaveState);
+  updateSaveState();
+
+  // セグメント（再タップで解除）と表記削除は委譲で処理
+  form.addEventListener("click", e => {
+    const seg = e.target.closest(".seg-btn");
+    if (seg) {
+      const wasOn = seg.dataset.on === "1";
+      seg.closest(".segment").querySelectorAll(".seg-btn").forEach(b => { b.dataset.on = "0"; b.setAttribute("aria-pressed", "false"); });
+      if (!wasOn) { seg.dataset.on = "1"; seg.setAttribute("aria-pressed", "true"); }
+      return;
+    }
+    const rm = e.target.closest(".remove-kanji");
+    if (rm) {
+      const block = rm.closest(".kanji-block");
+      const hasContent = block.querySelector(".f-kanji").value.trim() || block.querySelector(".f-meaning").value.trim();
+      if (!hasContent || confirm("この表記の入力内容を削除しますか？")) block.remove();
+    }
+  });
+
+  view.querySelector("#add-kanji").addEventListener("click", () => {
+    const wrap = view.querySelector("#kanji-blocks");
+    const div = document.createElement("div");
+    div.innerHTML = kanjiBlockHTML(null, wrap.children.length);
+    wrap.appendChild(div.firstElementChild);
+  });
+
+  view.querySelector("#cancel-btn").addEventListener("click", goBack);
+
+  saveBtn.addEventListener("click", () => {
+    const reading = readingInput.value.trim();
+    if (!reading) return;
+    const kanjiOptions = [];
+    view.querySelectorAll(".kanji-block").forEach(block => {
+      const text = block.querySelector(".f-kanji").value.trim();
+      if (!text) return; // 空の表記ブロックは保存しない
+      const diagnosis = emptyDiagnosis();
+      block.querySelectorAll('.seg-btn[data-on="1"]').forEach(b => { diagnosis[b.dataset.key] = b.dataset.v; });
+      kanjiOptions.push({
+        id: block.dataset.kanjiId || uuid(),
+        text,
+        meaning: block.querySelector(".f-meaning").value,
+        diagnosis,
+      });
+    });
+    const now = Date.now();
+    const cand = {
+      id: editing ? editing.id : uuid(),
+      reading,
+      kanjiOptions,
+      concerns: view.querySelector("#f-concerns").value,
+      createdAt: editing ? editing.createdAt : now,
+      updatedAt: now,
+    };
+    store.saveCandidate(cand);
+    location.hash = "#/detail/" + cand.id;
+  });
+}
+
+/* ================= バックアップ ================= */
+function backupHTML() {
+  return '<div class="info-card"><h2>📤 データの書き出し</h2>' +
+    "<p>下の内容をコピーして、メモアプリや LINE の Keep などに貼り付けて保管してください。機種変更のときはこれで引っ越しできます。</p>" +
+    '<textarea class="mono-area" id="export-area" readonly></textarea>' +
+    '<div style="margin-top:10px"><button class="btn btn-mint" id="copy-btn">コピーする</button></div></div>' +
+    '<div class="info-card"><h2>📥 データの読み込み</h2>' +
+    "<p>書き出したデータを下に貼り付けて「読み込む」を押すと、<strong>今のデータをすべて置き換えます</strong>。</p>" +
+    '<textarea class="mono-area" id="import-area" placeholder="ここに貼り付け"></textarea>' +
+    '<div style="margin-top:10px"><button class="btn btn-primary" id="import-btn">読み込む</button></div></div>';
+}
+function bindBackup(view) {
+  const exportArea = view.querySelector("#export-area");
+  exportArea.value = JSON.stringify({ schemaVersion: SCHEMA_VERSION, candidates: sortedCandidates() }, null, 2);
+  view.querySelector("#copy-btn").addEventListener("click", async () => {
+    try {
+      await navigator.clipboard.writeText(exportArea.value);
+      showToast("コピーしました");
+    } catch (e) {
+      exportArea.focus();
+      exportArea.select();
+      showToast("コピーできませんでした。全選択して手動でコピーしてください");
+    }
+  });
+  view.querySelector("#import-btn").addEventListener("click", () => {
+    const raw = view.querySelector("#import-area").value.trim();
+    if (!raw) { showToast("データを貼り付けてください"); return; }
+    let cands = null;
+    try { cands = validateImport(JSON.parse(raw)); } catch (e) {}
+    if (!cands) { showToast("データの形式が正しくありません"); return; }
+    if (!confirm("今のデータ（" + state.candidates.length + "件）を、貼り付けたデータ（" + cands.length + "件）で置き換えますか？")) return;
+    store.replaceAll(cands);
+    showToast("読み込みました");
+    location.hash = "#/";
+  });
+}
+
+/* ================= ペアリング ================= */
+function pairLink(roomId) {
+  return location.origin + location.pathname + "#/pair/" + roomId;
+}
+function pairHTML() {
+  if (!FIREBASE_CONFIG) {
+    return '<div class="info-card"><h2>👨‍👩‍👧 ふたりで共有</h2>' +
+      "<p>ふたりの端末で同じ候補リストを見られる機能は、ただいま準備中です。もうすこしお待ちください🌷</p></div>";
+  }
+  const roomId = getRoomId();
+  const joining = state.route.roomId;
+  if (joining && joining !== roomId) {
+    return '<div class="info-card"><h2>👨‍👩‍👧 共有に参加</h2>' +
+      "<p>パートナーの候補リストに参加します。" +
+      (state.candidates.length > 0 ? "この端末に入っている候補（" + state.candidates.length + "件）も、参加時に共有リストへ合流します。" : "") + "</p>" +
+      '<button class="btn btn-primary" id="join-room-btn">参加する</button></div>';
+  }
+  if (roomId) {
+    return '<div class="info-card"><h2>👨‍👩‍👧 ふたりで共有中</h2>' +
+      "<p>この端末は共有ルームにつながっています。パートナーを招待するには、下のリンクを LINE などで送ってください。</p>" +
+      '<textarea class="mono-area" id="pair-link-area" readonly style="min-height:64px">' + esc(pairLink(roomId)) + "</textarea>" +
+      '<div style="margin-top:10px"><button class="btn btn-mint" id="copy-link-btn">招待リンクをコピー</button></div>' +
+      '<p style="margin-top:12px">💡 このリンクはふたりのトークに残しておくと、機種変更やデータが消えたときの復帰に使えます。<strong>他の人には教えないでください。</strong></p></div>';
+  }
+  return '<div class="info-card"><h2>👨‍👩‍👧 ふたりで共有</h2>' +
+    "<p>共有ルームを作ると、ふたりの端末で同じ候補リストを見たり編集したりできます。" +
+    (state.candidates.length > 0 ? "今この端末にある候補（" + state.candidates.length + "件）はそのまま共有リストに引き継がれます。" : "") + "</p>" +
+    '<button class="btn btn-primary" id="create-room-btn">共有ルームを作る</button>' +
+    '<p style="margin-top:12px">パートナーから招待リンクをもらった場合は、そのリンクを開くだけで参加できます。</p></div>';
+}
+function bindPair(view) {
+  const createBtn = view.querySelector("#create-room-btn");
+  if (createBtn) createBtn.addEventListener("click", async () => {
+    createBtn.disabled = true;
+    try {
+      await createRoom();
+      showToast("共有ルームを作りました");
+      render();
+    } catch (e) {
+      console.error(e);
+      showToast("ルームを作れませんでした。通信環境を確認してください");
+      createBtn.disabled = false;
+    }
+  });
+  const joinBtn = view.querySelector("#join-room-btn");
+  if (joinBtn) joinBtn.addEventListener("click", async () => {
+    joinBtn.disabled = true;
+    try {
+      const ok = await joinRoom(state.route.roomId);
+      if (ok) {
+        showToast("共有に参加しました");
+        location.hash = "#/";
+      } else {
+        showToast("この招待リンクは無効です");
+        joinBtn.disabled = false;
+      }
+    } catch (e) {
+      console.error(e);
+      showToast("参加できませんでした。通信環境を確認してください");
+      joinBtn.disabled = false;
+    }
+  });
+  const copyBtn = view.querySelector("#copy-link-btn");
+  if (copyBtn) copyBtn.addEventListener("click", async () => {
+    const area = view.querySelector("#pair-link-area");
+    try {
+      await navigator.clipboard.writeText(area.value);
+      showToast("コピーしました");
+    } catch (e) {
+      area.focus();
+      area.select();
+      showToast("コピーできませんでした。全選択して手動でコピーしてください");
+    }
+  });
+}
+
+/* ================= 起動 ================= */
+function onStoreUpdate(cands) {
+  state.candidates = cands;
+  if (!isFormRoute()) render(); else renderHeader();
+}
+store.init();
+state.candidates = store.loadAll();
+store.subscribe(onStoreUpdate);
+state.route = parseHash();
+render();
+
+// Service Worker（sw.js が無い環境では黙って素通り）
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("./sw.js").catch(() => {});
+  });
+}
+</script>
+<script>
+"use strict";
+/* ================= Firebase レイヤ ================= */
+let fbx = null; // { db, auth, mods } 初期化済み Firebase 一式
+
+async function ensureFirebase() {
+  if (!FIREBASE_CONFIG) throw new Error("firebase not configured");
+  if (fbx) return fbx;
+  const [appMod, authMod, fsMod] = await Promise.all([
+    import("./vendor/firebase/firebase-app.js"),
+    import("./vendor/firebase/firebase-auth.js"),
+    import("./vendor/firebase/firebase-firestore.js"),
+  ]);
+  const app = appMod.initializeApp(FIREBASE_CONFIG);
+  const auth = authMod.getAuth(app);
+  // 既存の匿名セッションがあれば再利用（オフライン起動でも同期キャッシュが使える）
+  await new Promise((resolve) => {
+    const unsub = authMod.onAuthStateChanged(auth, () => { unsub(); resolve(); });
+  });
+  if (!auth.currentUser) await authMod.signInAnonymously(auth);
+  let db;
+  try {
+    db = fsMod.initializeFirestore(app, {
+      localCache: fsMod.persistentLocalCache(),
+    });
+  } catch (e) {
+    // IndexedDB が使えない環境（iOS Safari の一時的不調等）はメモリキャッシュで続行
+    db = fsMod.getFirestore(app);
+  }
+  fbx = { app, auth, db, fs: fsMod };
+  return fbx;
+}
+
+function createFirestoreStore(fb, roomId) {
+  let candidates = [];
+  let listeners = [];
+  let synced = false;
+  let pending = false;
+  let warning = null;
+  const colRef = fb.fs.collection(fb.db, "rooms", roomId, "candidates");
+
+  fb.fs.onSnapshot(colRef, { includeMetadataChanges: true }, (snap) => {
+    candidates = snap.docs.map((d) => normalizeCandidate(d.data())).filter(Boolean);
+    pending = snap.metadata.hasPendingWrites;
+    synced = true;
+    // 閲覧用フォールバックキャッシュ（IndexedDB 初期化失敗時の保険）
+    try { localStorage.setItem(LS_DATA_KEY, JSON.stringify({ schemaVersion: SCHEMA_VERSION, candidates })); } catch (e) {}
+    listeners.forEach((fn) => fn(candidates.slice()));
+  }, (err) => {
+    console.error("onSnapshot error", err);
+    warning = "同期でエラーが起きました。通信環境を確認してください";
+    listeners.forEach((fn) => fn(candidates.slice()));
+  });
+
+  return {
+    mode: "firestore",
+    init() {},
+    loadAll() { return candidates.slice(); },
+    getWarning() { return warning; },
+    syncState() { return { synced, pending }; },
+    saveCandidate(c) {
+      fb.fs.setDoc(fb.fs.doc(colRef, c.id), c).catch((e) => console.error("setDoc", e));
+    },
+    deleteCandidate(id) {
+      fb.fs.deleteDoc(fb.fs.doc(colRef, id)).catch((e) => console.error("deleteDoc", e));
+    },
+    replaceAll(cands) {
+      const batch = fb.fs.writeBatch(fb.db);
+      candidates.forEach((c) => { if (!cands.some((n) => n.id === c.id)) batch.delete(fb.fs.doc(colRef, c.id)); });
+      cands.forEach((c) => batch.set(fb.fs.doc(colRef, c.id), c));
+      batch.commit().catch((e) => console.error("replaceAll", e));
+    },
+    subscribe(fn) { listeners.push(fn); },
+  };
+}
+
+async function migrateLocalToRoom(fb, roomId, localCands) {
+  const colRef = fb.fs.collection(fb.db, "rooms", roomId, "candidates");
+  for (const c of localCands) {
+    await fb.fs.setDoc(fb.fs.doc(colRef, c.id), c);
+  }
+}
+
+function swapToFirestoreStore(fb, roomId) {
+  const fsStore = createFirestoreStore(fb, roomId);
+  fsStore.subscribe(onStoreUpdate);
+  store = fsStore;
+  renderHeader();
+}
+
+async function createRoom() {
+  const fb = await ensureFirebase();
+  const roomId = uuid();
+  await fb.fs.setDoc(fb.fs.doc(fb.db, "rooms", roomId), { schemaVersion: SCHEMA_VERSION, createdAt: Date.now() });
+  await migrateLocalToRoom(fb, roomId, state.candidates);
+  setRoomId(roomId);
+  swapToFirestoreStore(fb, roomId);
+}
+
+async function joinRoom(roomId) {
+  const fb = await ensureFirebase();
+  const roomDoc = await fb.fs.getDoc(fb.fs.doc(fb.db, "rooms", roomId));
+  if (!roomDoc.exists()) return false;
+  await migrateLocalToRoom(fb, roomId, state.candidates);
+  setRoomId(roomId);
+  swapToFirestoreStore(fb, roomId);
+  return true;
+}
+
+// 起動時: 設定済み & ペアリング済みなら Firestore モードへ自動アップグレード
+(async () => {
+  const roomId = getRoomId();
+  if (!FIREBASE_CONFIG || !roomId) return;
+  try {
+    const fb = await ensureFirebase();
+    swapToFirestoreStore(fb, roomId);
+  } catch (e) {
+    // オフライン起動等で失敗しても LocalStore（閲覧キャッシュ）のまま動き続ける
+    console.error("firebase init failed", e);
+  }
+})();
+</script>
+</body>
+</html>

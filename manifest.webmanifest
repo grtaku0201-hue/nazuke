@@ -1,0 +1,15 @@
+{
+  "name": "なまえノート",
+  "short_name": "なまえ",
+  "description": "子どもの名前候補をふたりで考えるノート",
+  "lang": "ja",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "background_color": "#FDF6EC",
+  "theme_color": "#FDF6EC",
+  "icons": [
+    { "src": "icon-180.png", "sizes": "180x180", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

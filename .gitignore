@@ -1,0 +1,8 @@
+# バックアップ/エクスポートした個人データはコミットしない
+backup*.json
+export*.json
+*.bak
+
+# OS
+Thumbs.db
+.DS_Store
