@@ -410,7 +410,14 @@ function showToast(msg) {
  * null のままでも、アプリは「この端末のみ」モードで完全に動作する。
  * ※ この設定値は秘密情報ではない（データの保護はセキュリティルールと
  *    推測不能なルームIDが担う）。 */
-const FIREBASE_CONFIG = null;
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyBiVoZlEOPef-RfrHLH1j6Le23SKIym8qM",
+  authDomain: "nazukeapp.firebaseapp.com",
+  projectId: "nazukeapp",
+  storageBucket: "nazukeapp.firebasestorage.app",
+  messagingSenderId: "943015657277",
+  appId: "1:943015657277:web:c8a9ed55f826b5b51f0f54"
+};
 
 const LS_ROOM_KEY = "nazuke.room.v1";
 function getRoomId() {
