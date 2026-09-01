@@ -179,10 +179,19 @@ main {
 }
 .section-label::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--pink-strong); }
 .meaning-text, .concern-text { font-size: 14px; white-space: pre-wrap; }
-.diag-rows { display: flex; flex-direction: column; gap: 8px; }
-.diag-row { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
-.diag-row .group-name { font-size: 12px; color: var(--text-sub); width: 3.2em; flex-shrink: 0; }
-.diag-item { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; }
+.diag-lines { display: flex; flex-direction: column; }
+.diag-line { padding: 8px 0; border-top: 1px dashed var(--border); }
+.diag-line:first-child { border-top: none; padding-top: 2px; }
+.diag-line-head { display: flex; align-items: center; gap: 10px; }
+.diag-label { font-size: 14px; font-weight: 700; width: 3.2em; flex-shrink: 0; }
+.diag-comment { font-size: 13px; color: var(--text-sub); margin-top: 4px; white-space: pre-wrap; }
+.elem-tags { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+.elem-tag { display: inline-flex; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; }
+.e-moku { background: #DCEEDC; color: #2F6B3C; }
+.e-ka   { background: #F9DAD4; color: #9C4030; }
+.e-do   { background: #F0E4CE; color: #7A5C2E; }
+.e-kin  { background: #F7EBC9; color: #8A6D1C; }
+.e-sui  { background: #D8E9F5; color: #2D5D80; }
 .badge {
   display: inline-flex;
   align-items: center;
@@ -280,6 +289,24 @@ main {
 .seg-btn[data-on="1"][data-v="◎"] { background: #F5BFC9; color: #7E3448; border-color: transparent; font-weight: 700; }
 .seg-btn[data-on="1"][data-v="○"] { background: #BCE4D3; color: #285E4A; border-color: transparent; font-weight: 700; }
 .seg-btn[data-on="1"][data-v="△"] { background: #E8E1D9; color: #665A50; border-color: transparent; font-weight: 700; }
+.elem-btn {
+  border: 1.5px solid var(--border);
+  background: var(--card-soft);
+  color: var(--text-sub);
+  font-family: inherit;
+  font-size: 15px;
+  width: 42px;
+  height: 44px;
+  border-radius: 12px;
+  cursor: pointer;
+}
+.elem-btn[data-on="1"] { border-color: transparent; font-weight: 700; }
+.elem-btn[data-on="1"][data-v="木性"] { background: #DCEEDC; color: #2F6B3C; }
+.elem-btn[data-on="1"][data-v="火性"] { background: #F9DAD4; color: #9C4030; }
+.elem-btn[data-on="1"][data-v="土性"] { background: #F0E4CE; color: #7A5C2E; }
+.elem-btn[data-on="1"][data-v="金性"] { background: #F7EBC9; color: #8A6D1C; }
+.elem-btn[data-on="1"][data-v="水性"] { background: #D8E9F5; color: #2D5D80; }
+.comment-input { margin: 6px 0 10px; padding: 9px 12px; box-shadow: none; }
 .add-kanji-btn { width: 100%; margin-bottom: 20px; }
 .save-bar {
   position: fixed;
@@ -400,43 +427,55 @@ function setRoomId(roomId) {
 }
 
 /* ================= 診断項目定義 ================= */
-const DIAG_GROUPS = [
-  { name: "画数", items: [
-    { key: "jinkaku", label: "人格" },
-    { key: "chikaku", label: "地格" },
-    { key: "gaikaku", label: "外格" },
-    { key: "soukaku", label: "総格" },
-  ]},
-  { name: "五行", items: [
-    { key: "gogyoTenkaku", label: "天格" },
-    { key: "gogyoJinkaku", label: "人格" },
-    { key: "gogyoChikaku", label: "地格" },
-  ]},
-  { name: "言霊", items: [
-    { key: "kotodama", label: "言霊" },
-  ]},
-];
-const DIAG_KEYS = DIAG_GROUPS.flatMap(g => g.items.map(i => i.key));
 const DIAG_VALUES = ["◎", "○", "△"];
+const GOGYO_ELEMENTS = ["木性", "火性", "土性", "金性", "水性"];
+// ◎○△の評価とコメント（<key>Comment）を持つ6項目
+const DIAG_ITEMS = [
+  { key: "jinkaku", label: "人格", group: "画数" },
+  { key: "chikaku", label: "地格", group: "画数" },
+  { key: "gaikaku", label: "外格", group: "画数" },
+  { key: "soukaku", label: "総格", group: "画数" },
+  { key: "gogyo", label: "五行", group: "五行" },
+  { key: "kotodama", label: "言霊", group: "言霊" },
+];
+// 五行: 天格・人格・地格それぞれの五行（木火土金水）を選択
+const GOGYO_POSITIONS = [
+  { key: "gogyoTenkaku", label: "天格" },
+  { key: "gogyoJinkaku", label: "人格" },
+  { key: "gogyoChikaku", label: "地格" },
+];
 
 function emptyDiagnosis() {
   const d = {};
-  DIAG_KEYS.forEach(k => d[k] = null);
+  DIAG_ITEMS.forEach(i => { d[i.key] = null; d[i.key + "Comment"] = ""; });
+  GOGYO_POSITIONS.forEach(pos => { d[pos.key] = null; });
   return d;
 }
 function normalizeDiagnosis(d) {
   const out = emptyDiagnosis();
   if (d && typeof d === "object") {
-    DIAG_KEYS.forEach(k => { if (DIAG_VALUES.includes(d[k])) out[k] = d[k]; });
+    DIAG_ITEMS.forEach(i => {
+      if (DIAG_VALUES.includes(d[i.key])) out[i.key] = d[i.key];
+      if (typeof d[i.key + "Comment"] === "string") out[i.key + "Comment"] = d[i.key + "Comment"];
+    });
+    GOGYO_POSITIONS.forEach(pos => { if (GOGYO_ELEMENTS.includes(d[pos.key])) out[pos.key] = d[pos.key]; });
+    // 旧形式（五行が天/人/地ごとに◎○△）からの移行: 最初に見つかった評価を総合評価へ
+    if (!out.gogyo) {
+      for (const k of ["gogyoJinkaku", "gogyoTenkaku", "gogyoChikaku"]) {
+        if (DIAG_VALUES.includes(d[k])) { out.gogyo = d[k]; break; }
+      }
+    }
   }
   return out;
 }
 function diagnosisIsEmpty(d) {
-  return !d || DIAG_KEYS.every(k => d[k] == null);
+  if (!d) return true;
+  return DIAG_ITEMS.every(i => d[i.key] == null && !d[i.key + "Comment"]) &&
+    GOGYO_POSITIONS.every(pos => d[pos.key] == null);
 }
 
 /* ================= スキーマ ================= */
-const SCHEMA_VERSION = 1;
+const SCHEMA_VERSION = 2;
 function migrate(data) {
   // v1: 素通し（将来のバージョンアップ用フック）
   if (!data || typeof data !== "object") return { schemaVersion: SCHEMA_VERSION, candidates: [] };
@@ -625,6 +664,27 @@ function badgeHTML(v) {
   if (v === "△") return '<span class="badge b-warn">△</span>';
   return '<span class="badge b-none">−</span>';
 }
+const ELEM_CLASS = { "木性": "e-moku", "火性": "e-ka", "土性": "e-do", "金性": "e-kin", "水性": "e-sui" };
+function detailDiagHTML(d) {
+  let rows = "";
+  DIAG_ITEMS.forEach(i => {
+    const val = d[i.key];
+    const com = d[i.key + "Comment"];
+    let extra = "";
+    if (i.key === "gogyo") {
+      const tags = GOGYO_POSITIONS.filter(pos => d[pos.key]).map(pos =>
+        '<span class="elem-tag ' + ELEM_CLASS[d[pos.key]] + '">' + esc(pos.label) + "：" + esc(d[pos.key]) + "</span>"
+      ).join("");
+      if (tags) extra = '<div class="elem-tags">' + tags + "</div>";
+    }
+    if (val == null && !com && !extra) return; // 何も入っていない項目は出さない
+    rows += '<div class="diag-line"><div class="diag-line-head"><span class="diag-label">' + esc(i.label) + "</span>" + badgeHTML(val) + "</div>" +
+      extra +
+      (com ? '<div class="diag-comment">' + esc(com) + "</div>" : "") +
+      "</div>";
+  });
+  return rows;
+}
 function detailHTML() {
   const c = findCandidate(state.route.id);
   if (!c) return '<div class="empty-state"><span class="emoji">🕊️</span>この候補は見つかりませんでした<br>（削除された可能性があります）</div>';
@@ -636,15 +696,7 @@ function detailHTML() {
       html += '<div class="section-label">漢字の意味</div><div class="meaning-text">' + esc(k.meaning) + "</div>";
     }
     if (!diagnosisIsEmpty(k.diagnosis)) {
-      html += '<div class="section-label">姓名診断</div><div class="diag-rows">';
-      DIAG_GROUPS.forEach(g => {
-        html += '<div class="diag-row"><span class="group-name">' + esc(g.name) + "</span>";
-        g.items.forEach(item => {
-          html += '<span class="diag-item">' + (g.name === "言霊" ? "" : esc(item.label)) + badgeHTML(k.diagnosis[item.key]) + "</span>";
-        });
-        html += "</div>";
-      });
-      html += "</div>";
+      html += '<div class="section-label">姓名診断</div><div class="diag-lines">' + detailDiagHTML(k.diagnosis) + "</div>";
     }
     html += "</div>";
   });
@@ -684,6 +736,32 @@ function segRowHTML(item, value, groupName) {
     ).join("") +
     "</div></div>";
 }
+function elemRowHTML(pos, value) {
+  return '<div class="seg-row"><span class="seg-label">' + esc(pos.label) + "</span>" +
+    '<div class="segment" role="radiogroup" aria-label="五行 ' + esc(pos.label) + '">' +
+    GOGYO_ELEMENTS.map(v =>
+      '<button type="button" class="elem-btn" data-key="' + esc(pos.key) + '" data-v="' + v + '" data-on="' + (value === v ? "1" : "0") + '" aria-pressed="' + (value === v) + '" title="' + v + '">' + v.charAt(0) + "</button>"
+    ).join("") +
+    "</div></div>";
+}
+function commentInputHTML(key, value) {
+  return '<input type="text" class="text-input comment-input f-diag-comment" data-key="' + esc(key) + '" placeholder="コメント（任意）" value="' + esc(value) + '">';
+}
+function diagFormHTML(d) {
+  let h = '<div class="diag-group-label">画数</div>';
+  DIAG_ITEMS.filter(i => i.group === "画数").forEach(i => {
+    h += segRowHTML(i, d[i.key], "画数") + commentInputHTML(i.key, d[i.key + "Comment"]);
+  });
+  h += '<div class="diag-group-label">五行</div>';
+  const gogyo = DIAG_ITEMS.find(i => i.key === "gogyo");
+  h += segRowHTML({ key: "gogyo", label: "総合評価" }, d.gogyo, "五行");
+  GOGYO_POSITIONS.forEach(pos => { h += elemRowHTML(pos, d[pos.key]); });
+  h += commentInputHTML("gogyo", d.gogyoComment);
+  h += '<div class="diag-group-label">言霊</div>';
+  const koto = DIAG_ITEMS.find(i => i.key === "kotodama");
+  h += segRowHTML(koto, d.kotodama, "言霊") + commentInputHTML("kotodama", d.kotodamaComment);
+  return h;
+}
 function kanjiBlockHTML(k, idx) {
   const d = k ? k.diagnosis : emptyDiagnosis();
   return '<div class="kanji-block" data-kanji-id="' + esc(k ? k.id : uuid()) + '">' +
@@ -694,10 +772,7 @@ function kanjiBlockHTML(k, idx) {
     '<div class="form-group"><label class="form-label">漢字の意味</label>' +
     '<textarea class="textarea f-meaning" placeholder="例：&#10;陽…太陽、明るさ&#10;翔…大きく羽ばたく">' + esc(k ? k.meaning : "") + "</textarea></div>" +
     '<div class="form-label">姓名診断（わかるところだけでOK）</div>' +
-    DIAG_GROUPS.map(g =>
-      '<div class="diag-group-label">' + esc(g.name) + "</div>" +
-      g.items.map(item => segRowHTML(item, d[item.key], g.name)).join("")
-    ).join("") +
+    diagFormHTML(d) +
     "</div>";
 }
 function renderForm(view) {
@@ -735,10 +810,10 @@ function bindForm(view, editing) {
 
   // セグメント（再タップで解除）と表記削除は委譲で処理
   form.addEventListener("click", e => {
-    const seg = e.target.closest(".seg-btn");
+    const seg = e.target.closest(".seg-btn, .elem-btn");
     if (seg) {
       const wasOn = seg.dataset.on === "1";
-      seg.closest(".segment").querySelectorAll(".seg-btn").forEach(b => { b.dataset.on = "0"; b.setAttribute("aria-pressed", "false"); });
+      seg.closest(".segment").querySelectorAll(".seg-btn, .elem-btn").forEach(b => { b.dataset.on = "0"; b.setAttribute("aria-pressed", "false"); });
       if (!wasOn) { seg.dataset.on = "1"; seg.setAttribute("aria-pressed", "true"); }
       return;
     }
@@ -767,7 +842,8 @@ function bindForm(view, editing) {
       const text = block.querySelector(".f-kanji").value.trim();
       if (!text) return; // 空の表記ブロックは保存しない
       const diagnosis = emptyDiagnosis();
-      block.querySelectorAll('.seg-btn[data-on="1"]').forEach(b => { diagnosis[b.dataset.key] = b.dataset.v; });
+      block.querySelectorAll('.seg-btn[data-on="1"], .elem-btn[data-on="1"]').forEach(b => { diagnosis[b.dataset.key] = b.dataset.v; });
+      block.querySelectorAll(".f-diag-comment").forEach(inp => { diagnosis[inp.dataset.key + "Comment"] = inp.value.trim(); });
       kanjiOptions.push({
         id: block.dataset.kanjiId || uuid(),
         text,

@@ -5,7 +5,7 @@
  * 【重要】更新をデプロイするときは必ず CACHE_NAME のバージョン番号を上げること。
  * 上げ忘れると、ユーザーの端末で古い HTML が表示され続けます。
  */
-const CACHE_NAME = "nazuke-v3";
+const CACHE_NAME = "nazuke-v4";
 
 // プリキャッシュ: 自オリジンの静的ファイルのみ
 const PRECACHE_URLS = [
