@@ -3,9 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="color-scheme" content="light dark">
-<meta name="theme-color" content="#FDF6EC" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#262220" media="(prefers-color-scheme: dark)">
+<meta name="color-scheme" content="light">
+<meta name="theme-color" content="#FAF7F2">
 <title>なまえノート</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-180.png">
@@ -15,9 +14,9 @@
 <style>
 /* ============ ふんわりパステル デザイントークン ============ */
 :root {
-  --bg: #FDF6EC;
+  --bg: #FAF7F2;
   --card: #FFFFFF;
-  --card-soft: #FBF1E8;
+  --card-soft: #F6F1E9;
   --text: #594E46;
   --text-sub: #857567;
   --pink: #F3C6CE;
@@ -32,29 +31,7 @@
   --danger: #C25B5B;
   --shadow: 0 4px 16px rgba(180, 150, 140, .18);
   --shadow-sm: 0 2px 8px rgba(180, 150, 140, .12);
-  --border: #EFE3D7;
-}
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #262220;
-    --card: #33302C;
-    --card-soft: #3C3833;
-    --text: #F0E9E1;
-    --text-sub: #B8ACA1;
-    --pink: rgba(231, 166, 180, .22);
-    --pink-soft: rgba(231, 166, 180, .12);
-    --pink-text: #F2BCC8;
-    --pink-strong: #E7A6B4;
-    --mint: rgba(159, 214, 195, .20);
-    --mint-soft: rgba(159, 214, 195, .10);
-    --mint-text: #A9DDC9;
-    --beige: rgba(232, 225, 217, .15);
-    --beige-text: #C4B8AC;
-    --danger: #E08585;
-    --shadow: 0 4px 16px rgba(0, 0, 0, .40);
-    --shadow-sm: 0 2px 8px rgba(0, 0, 0, .30);
-    --border: #46413B;
-  }
+  --border: #EDE6DB;
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -220,11 +197,6 @@ main {
 .badge.b-good { background: #BCE4D3; color: #285E4A; }
 .badge.b-warn { background: #E8E1D9; color: #665A50; }
 .badge.b-none { background: transparent; border: 1.5px dashed var(--border); color: var(--text-sub); }
-@media (prefers-color-scheme: dark) {
-  .badge.b-best { background: rgba(245,191,201,.25); color: #F2BCC8; }
-  .badge.b-good { background: rgba(188,228,211,.22); color: #A9DDC9; }
-  .badge.b-warn { background: rgba(232,225,217,.15); color: #C4B8AC; }
-}
 .concern-card {
   background: var(--pink-soft);
   border-radius: 20px;
@@ -308,11 +280,6 @@ main {
 .seg-btn[data-on="1"][data-v="◎"] { background: #F5BFC9; color: #7E3448; border-color: transparent; font-weight: 700; }
 .seg-btn[data-on="1"][data-v="○"] { background: #BCE4D3; color: #285E4A; border-color: transparent; font-weight: 700; }
 .seg-btn[data-on="1"][data-v="△"] { background: #E8E1D9; color: #665A50; border-color: transparent; font-weight: 700; }
-@media (prefers-color-scheme: dark) {
-  .seg-btn[data-on="1"][data-v="◎"] { background: rgba(245,191,201,.30); color: #F2BCC8; }
-  .seg-btn[data-on="1"][data-v="○"] { background: rgba(188,228,211,.26); color: #A9DDC9; }
-  .seg-btn[data-on="1"][data-v="△"] { background: rgba(232,225,217,.20); color: #C4B8AC; }
-}
 .add-kanji-btn { width: 100%; margin-bottom: 20px; }
 .save-bar {
   position: fixed;
