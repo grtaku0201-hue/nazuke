@@ -119,8 +119,54 @@ main {
   transition: transform .1s;
 }
 .name-card:active { transform: scale(.98); }
+.name-card:focus-visible { outline: 2px solid var(--pink-strong); outline-offset: 2px; }
 .name-card .reading { font-size: 22px; font-weight: 700; }
 .name-card .kanji-list { font-size: 14px; color: var(--text-sub); margin-top: 2px; }
+.card-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.card-row .reading { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+
+/* ============ 星 ============ */
+/* グリフは常に ★。塗りと空きは色で区別する（☆ と ★ で字幅が揃わないフォントがある） */
+.stars { display: flex; flex-shrink: 0; }
+.star {
+  border: none;
+  background: none;
+  padding: 0;
+  width: 34px;
+  height: 44px;
+  font-size: 22px;
+  line-height: 1;
+  color: #E3D9CF;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+.star.on { color: var(--pink-strong); }
+.star:active { transform: scale(.88); }
+.stars-ro { letter-spacing: 1px; color: #E3D9CF; font-size: 15px; }
+.stars-ro .on { color: var(--pink-strong); }
+.partner-stars { font-size: 13px; color: var(--text-sub); margin-top: 4px; display: flex; align-items: center; gap: 6px; }
+.rate-row { display: flex; align-items: center; gap: 10px; min-height: 44px; }
+.rate-name { font-size: 14px; font-weight: 700; width: 5.2em; flex-shrink: 0; }
+.rate-none { font-size: 13px; color: var(--text-sub); }
+.slot-pick h2 { font-size: 15px; }
+
+/* ============ 並び順セグメント ============ */
+.sort-bar { display: flex; gap: 8px; margin: 4px 0 14px; }
+.sort-btn {
+  flex: 1;
+  border: none;
+  background: var(--card);
+  color: var(--text-sub);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  border-radius: 999px;
+  min-height: 40px;
+  box-shadow: var(--shadow-sm);
+  cursor: pointer;
+}
+.sort-btn.on { background: var(--pink-soft); color: var(--pink-text); }
 .empty-state {
   text-align: center;
   color: var(--text-sub);
@@ -413,17 +459,39 @@ const FIREBASE_CONFIG = {
   appId: "1:943015657277:web:c8a9ed55f826b5b51f0f54"
 };
 
+/* ================= 共有ルームと自分の評価スロット =================
+ * 評価は2枠（a / b）のみ。ルームを作った側が a、招待リンクで参加した側が b。
+ * 未ペアリング時は a。ストレージが消えても「入れ替える」で復旧できる。 */
 const LS_ROOM_KEY = "nazuke.room.v1";
-function getRoomId() {
+const SLOTS = ["a", "b"];
+
+function readRoomRaw() {
   try {
     const raw = localStorage.getItem(LS_ROOM_KEY);
-    if (!raw) return null;
+    if (!raw) return {};
     const obj = JSON.parse(raw);
-    return typeof obj.roomId === "string" && obj.roomId ? obj.roomId : null;
-  } catch (e) { return null; }
+    return obj && typeof obj === "object" ? obj : {};
+  } catch (e) { return {}; }
 }
-function setRoomId(roomId) {
-  try { localStorage.setItem(LS_ROOM_KEY, JSON.stringify({ roomId })); } catch (e) {}
+function getRoomId() {
+  const o = readRoomRaw();
+  return typeof o.roomId === "string" && o.roomId ? o.roomId : null;
+}
+// 未ペアリングなら "a"。ペアリング済みで slot 未記録なら null（旧バージョンからの
+// アップグレード。両端末が a になって互いの星を消し合うのを防ぐため確認を求める）
+function getMySlot() {
+  const o = readRoomRaw();
+  if (!getRoomId()) return "a";
+  return SLOTS.includes(o.slot) ? o.slot : null;
+}
+function setRoom(roomId, slot) {
+  try { localStorage.setItem(LS_ROOM_KEY, JSON.stringify({ roomId, slot })); } catch (e) {}
+}
+function partnerSlot(slot) { return slot === "a" ? "b" : "a"; }
+function swapSlot() {
+  const cur = getMySlot();
+  if (!cur) return;
+  setRoom(getRoomId(), partnerSlot(cur));
 }
 
 /* ================= 診断項目定義 ================= */
@@ -475,17 +543,31 @@ function diagnosisIsEmpty(d) {
 }
 
 /* ================= スキーマ ================= */
-const SCHEMA_VERSION = 2;
+const SCHEMA_VERSION = 3;
 function migrate(data) {
-  // v1: 素通し（将来のバージョンアップ用フック）
+  // v1〜v3: 素通し。欠損フィールドは normalizeCandidate が埋めるため移行コードは不要。
+  //   v2: 五行の入力方式変更（normalizeDiagnosis が旧形式を吸収）
+  //   v3: ratings 追加（normalizeRatings が吸収）
   if (!data || typeof data !== "object") return { schemaVersion: SCHEMA_VERSION, candidates: [] };
   return data;
+}
+// ratings: { a?: 1..5, b?: 1..5 }。未評価はキー不在で表す（null は使わない）
+function normalizeRatings(r) {
+  const out = {};
+  if (r && typeof r === "object") {
+    SLOTS.forEach(s => {
+      const v = r[s];
+      if (Number.isInteger(v) && v >= 1 && v <= 5) out[s] = v;
+    });
+  }
+  return out;
 }
 function normalizeCandidate(c) {
   if (!c || typeof c !== "object" || typeof c.reading !== "string") return null;
   return {
     id: typeof c.id === "string" && c.id ? c.id : uuid(),
     reading: c.reading,
+    ratings: normalizeRatings(c.ratings),
     kanjiOptions: Array.isArray(c.kanjiOptions) ? c.kanjiOptions.map(k => ({
       id: typeof k.id === "string" && k.id ? k.id : uuid(),
       text: String(k.text || ""),
@@ -541,9 +623,19 @@ function createLocalStore() {
     },
     loadAll() { return candidates.slice(); },
     getWarning() { return loadWarning; },
+    // ratings は saveCandidate では書かない（フォーム保存で星が巻き戻るのを防ぐ）。
+    // 星の変更は必ず setRating を通す。
     saveCandidate(c) {
       const i = candidates.findIndex(x => x.id === c.id);
-      if (i >= 0) candidates[i] = c; else candidates.push(c);
+      const next = { ...c, ratings: i >= 0 ? candidates[i].ratings : normalizeRatings(c.ratings) };
+      if (i >= 0) candidates[i] = next; else candidates.push(next);
+      persist();
+      notify();
+    },
+    setRating(id, slot, value) {
+      const c = candidates.find(x => x.id === id);
+      if (!c || !SLOTS.includes(slot)) return;
+      if (value == null) delete c.ratings[slot]; else c.ratings[slot] = value;
       persist();
       notify();
     },
@@ -563,9 +655,54 @@ function createLocalStore() {
 
 /* ================= アプリ状態 ================= */
 let store = createLocalStore();
-const state = { candidates: [], route: { name: "list" } };
 
-function sortedCandidates() {
+/* ---- 並び順（端末ごとのUI設定。共有はしない） ---- */
+const LS_UI_KEY = "nazuke.ui.v1";
+const SORT_MODES = ["reading", "rating"];
+function loadSortMode() {
+  try {
+    const o = JSON.parse(localStorage.getItem(LS_UI_KEY) || "{}");
+    return SORT_MODES.includes(o.sort) ? o.sort : "reading";
+  } catch (e) { return "reading"; }
+}
+function saveSortMode(mode) {
+  try { localStorage.setItem(LS_UI_KEY, JSON.stringify({ sort: mode })); } catch (e) {}
+}
+
+const state = { candidates: [], route: { name: "list" }, sort: loadSortMode() };
+
+// 五十音順: Intl.Collator("ja") は濁音・小書き・長音・カタカナを辞書順に扱う。
+// コードポイント順だと「かん」が「がい」より前、「らーめん」が末尾に飛ぶため使わない。
+const jaCollator = (typeof Intl !== "undefined" && Intl.Collator) ? new Intl.Collator("ja") : null;
+function compareReading(a, b) {
+  const x = (a.reading || "").trim(), y = (b.reading || "").trim();
+  const r = jaCollator ? jaCollator.compare(x, y) : (x < y ? -1 : x > y ? 1 : 0);
+  if (r !== 0) return r;
+  return (a.createdAt - b.createdAt) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
+}
+// 存在する評価の平均。片方だけなら その値、両方未評価なら null
+function ratingScore(c) {
+  const vals = SLOTS.map(s => c.ratings && c.ratings[s]).filter(v => typeof v === "number");
+  if (vals.length === 0) return null;
+  return vals.reduce((a, b) => a + b, 0) / vals.length;
+}
+
+function sortedCandidates(mode = state.sort) {
+  const list = state.candidates.slice();
+  if (mode === "rating") {
+    return list.sort((a, b) => {
+      const sa = ratingScore(a), sb = ratingScore(b);
+      if (sa == null && sb == null) return compareReading(a, b); // 未評価は末尾で五十音順
+      if (sa == null) return 1;
+      if (sb == null) return -1;
+      if (sb !== sa) return sb - sa; // 高い順
+      return compareReading(a, b);
+    });
+  }
+  return list.sort(compareReading);
+}
+// バックアップの書き出しは登録順に固定（UI設定で差分が変わらないように）
+function candidatesByCreated() {
   return state.candidates.slice().sort((a, b) => a.createdAt - b.createdAt);
 }
 function findCandidate(id) { return state.candidates.find(c => c.id === id) || null; }
@@ -590,8 +727,11 @@ window.addEventListener("hashchange", () => {
 });
 
 /* ================= 描画 ================= */
-function render() {
+// keepScroll: 星タップや相手の更新による再描画でスクロール位置が先頭に飛ばないようにする。
+// 画面遷移（hashchange）では従来どおり先頭へ。
+function render(opts) {
   const view = document.getElementById("view");
+  const y = window.scrollY;
   renderHeader();
   switch (state.route.name) {
     case "list": view.innerHTML = listHTML(); break;
@@ -600,7 +740,7 @@ function render() {
     case "backup": view.innerHTML = backupHTML(); bindBackup(view); break;
     case "pair": view.innerHTML = pairHTML(); bindPair(view); break;
   }
-  window.scrollTo(0, 0);
+  window.scrollTo(0, (opts && opts.keepScroll) ? y : 0);
 }
 
 function goBack() {
@@ -636,25 +776,77 @@ window.addEventListener("online", renderHeader);
 window.addEventListener("offline", renderHeader);
 
 /* ================= 一覧 ================= */
+// 星: グリフは常に ★ で色だけ変える（☆ と ★ は字幅が揃わないフォントがある）
+function starsInputHTML(candId, value, label) {
+  const v = value || 0;
+  return '<div class="stars" role="radiogroup" aria-label="' + esc(label) + '">' +
+    [1, 2, 3, 4, 5].map(n =>
+      '<button type="button" class="star' + (n <= v ? " on" : "") + '" data-rate="' + n +
+      '" data-id="' + esc(candId) + '" aria-pressed="' + (n === v) + '" aria-label="' + n + '">★</button>'
+    ).join("") + "</div>";
+}
+function starsReadonlyHTML(value) {
+  const v = value || 0;
+  return '<span class="stars-ro">' +
+    [1, 2, 3, 4, 5].map(n => '<span class="' + (n <= v ? "on" : "") + '">★</span>').join("") + "</span>";
+}
+
+function slotPickHTML() {
+  return '<div class="info-card slot-pick"><h2>⭐ 評価をはじめる前に</h2>' +
+    "<p>この端末はどちら側でしょうか？ ふたりの★を分けて記録するために一度だけ確認します。</p>" +
+    '<button class="btn btn-primary" data-slot-pick="a">共有ルームを作った側</button>' +
+    '<div style="height:10px"></div>' +
+    '<button class="btn btn-mint" data-slot-pick="b">招待リンクで参加した側</button></div>';
+}
+
+function sortBarHTML() {
+  const opt = (mode, label) =>
+    '<button type="button" class="sort-btn' + (state.sort === mode ? " on" : "") +
+    '" data-sort="' + mode + '" aria-pressed="' + (state.sort === mode) + '">' + label + "</button>";
+  return '<div class="sort-bar">' + opt("reading", "あいうえお順") + opt("rating", "★が高い順") + "</div>";
+}
+
 function listHTML() {
   const warning = store.getWarning ? store.getWarning() : null;
   const cands = sortedCandidates();
+  const mySlot = getMySlot();
   let html = "";
   if (warning) html += '<div class="notice-banner">' + esc(warning) + "</div>";
+  if (!mySlot) html += slotPickHTML();
   if (cands.length === 0) {
     html += '<div class="empty-state"><span class="emoji">🌸</span>「＋ なまえを追加」から<br>名前の候補を登録してみましょう</div>';
   } else {
+    html += sortBarHTML();
     html += cands.map(c => {
       const kanji = c.kanjiOptions.map(k => esc(k.text)).join("　");
-      return '<button class="name-card" data-nav="#/detail/' + esc(c.id) + '">' +
-        '<div class="reading">' + esc(c.reading) + "</div>" +
+      const mine = mySlot ? c.ratings[mySlot] : 0;
+      const theirs = mySlot ? c.ratings[partnerSlot(mySlot)] : 0;
+      return '<div class="name-card" role="link" tabindex="0" data-nav="#/detail/' + esc(c.id) + '">' +
+        '<div class="card-row"><div class="reading">' + esc(c.reading) + "</div>" +
+        starsInputHTML(c.id, mine, "じぶんの評価") + "</div>" +
         (kanji ? '<div class="kanji-list">' + kanji + "</div>" : "") +
-        "</button>";
+        (theirs ? '<div class="partner-stars">パートナー ' + starsReadonlyHTML(theirs) + "</div>" : "") +
+        "</div>";
     }).join("");
   }
   html += '<div class="footer-links"><a href="#/backup">データの書き出し・読み込み</a></div>';
   html += '<button class="fab" data-nav="#/new">＋ なまえを追加</button>';
   return html;
+}
+
+// 星タップ: 同じ星を再タップで解除（フォームの ◎○△ と一貫）
+function rateAction(id, n) {
+  const slot = getMySlot();
+  if (!slot) { showToast("先に上の確認に答えてください"); return; }
+  const c = findCandidate(id);
+  if (!c) return;
+  store.setRating(id, slot, c.ratings[slot] === n ? null : n);
+}
+function setSortMode(mode) {
+  if (!SORT_MODES.includes(mode) || state.sort === mode) return;
+  state.sort = mode;
+  saveSortMode(mode);
+  render();
 }
 
 /* ================= 詳細 ================= */
@@ -663,6 +855,18 @@ function badgeHTML(v) {
   if (v === "○") return '<span class="badge b-good">○</span>';
   if (v === "△") return '<span class="badge b-warn">△</span>';
   return '<span class="badge b-none">−</span>';
+}
+function ratingCardHTML(c) {
+  const slot = getMySlot();
+  if (!slot) {
+    return '<div class="kanji-section"><div class="section-label">ふたりの評価</div>' +
+      '<p style="font-size:13px;color:var(--text-sub)">一覧の「評価をはじめる前に」で担当を選ぶと使えます</p></div>';
+  }
+  const theirs = c.ratings[partnerSlot(slot)];
+  return '<div class="kanji-section"><div class="section-label">ふたりの評価</div>' +
+    '<div class="rate-row"><span class="rate-name">じぶん</span>' + starsInputHTML(c.id, c.ratings[slot], "じぶんの評価") + "</div>" +
+    '<div class="rate-row"><span class="rate-name">パートナー</span>' +
+    (theirs ? starsReadonlyHTML(theirs) : '<span class="rate-none">まだ評価していません</span>') + "</div></div>";
 }
 const ELEM_CLASS = { "木性": "e-moku", "火性": "e-ka", "土性": "e-do", "金性": "e-kin", "水性": "e-sui" };
 function detailDiagHTML(d) {
@@ -689,6 +893,7 @@ function detailHTML() {
   const c = findCandidate(state.route.id);
   if (!c) return '<div class="empty-state"><span class="emoji">🕊️</span>この候補は見つかりませんでした<br>（削除された可能性があります）</div>';
   let html = '<div class="detail-reading">' + esc(c.reading) + "</div>";
+  html += ratingCardHTML(c);
   c.kanjiOptions.forEach(k => {
     html += '<div class="kanji-section">';
     html += '<div class="kanji-text">' + esc(k.text) + "</div>";
@@ -717,12 +922,28 @@ function deleteCandidateAction(id) {
   location.hash = "#/";
 }
 
-// data-nav / data-action の共通ハンドラ（innerHTML 由来の onclick を避ける）
+// 共通ハンドラ（innerHTML 由来の onclick を避ける）
+// カード内の星より先に拾う必要があるため data-rate → data-sort → data-nav の順で判定する
 document.addEventListener("click", e => {
+  const rate = e.target.closest("[data-rate]");
+  if (rate) { rateAction(rate.dataset.id, Number(rate.dataset.rate)); return; }
+  const sort = e.target.closest("[data-sort]");
+  if (sort) { setSortMode(sort.dataset.sort); return; }
+  const pick = e.target.closest("[data-slot-pick]");
+  if (pick) { setRoom(getRoomId(), pick.dataset.slotPick); render(); return; }
+  const swap = e.target.closest("[data-action='swap-slot']");
+  if (swap) { swapSlot(); render(); showToast("評価の担当を入れ替えました"); return; }
   const nav = e.target.closest("[data-nav]");
   if (nav) { location.hash = nav.dataset.nav; return; }
   const act = e.target.closest("[data-action='delete']");
   if (act) deleteCandidateAction(act.dataset.id);
+});
+
+// role="link" のカードをキーボードでも開けるようにする
+document.addEventListener("keydown", e => {
+  if (e.key !== "Enter" && e.key !== " ") return;
+  const nav = e.target.closest && e.target.closest('.name-card[data-nav]');
+  if (nav && e.target === nav) { e.preventDefault(); location.hash = nav.dataset.nav; }
 });
 </script>
 <script>
@@ -878,7 +1099,7 @@ function backupHTML() {
 }
 function bindBackup(view) {
   const exportArea = view.querySelector("#export-area");
-  exportArea.value = JSON.stringify({ schemaVersion: SCHEMA_VERSION, candidates: sortedCandidates() }, null, 2);
+  exportArea.value = JSON.stringify({ schemaVersion: SCHEMA_VERSION, candidates: candidatesByCreated() }, null, 2);
   view.querySelector("#copy-btn").addEventListener("click", async () => {
     try {
       await navigator.clipboard.writeText(exportArea.value);
@@ -924,7 +1145,11 @@ function pairHTML() {
       "<p>この端末は共有ルームにつながっています。パートナーを招待するには、下のリンクを LINE などで送ってください。</p>" +
       '<textarea class="mono-area" id="pair-link-area" readonly style="min-height:64px">' + esc(pairLink(roomId)) + "</textarea>" +
       '<div style="margin-top:10px"><button class="btn btn-mint" id="copy-link-btn">招待リンクをコピー</button></div>' +
-      '<p style="margin-top:12px">💡 このリンクはふたりのトークに残しておくと、機種変更やデータが消えたときの復帰に使えます。<strong>他の人には教えないでください。</strong></p></div>';
+      '<p style="margin-top:12px">💡 このリンクはふたりのトークに残しておくと、機種変更やデータが消えたときの復帰に使えます。<strong>他の人には教えないでください。</strong></p>' +
+      '<hr style="border:none;border-top:1px solid var(--border);margin:16px 0">' +
+      '<p style="margin-bottom:6px">この端末の★は「' + (getMySlot() === "b" ? "招待リンクで参加した側" : "ルームを作った側") + '」として記録しています。' +
+      'もし相手の★と入れ替わっていたら、下のボタンで直せます。</p>' +
+      '<button class="btn btn-secondary" data-action="swap-slot">じぶんとパートナーの★を入れ替える</button></div>';
   }
   return '<div class="info-card"><h2>👨‍👩‍👧 ふたりで共有</h2>' +
     "<p>共有ルームを作ると、ふたりの端末で同じ候補リストを見たり編集したりできます。" +
@@ -981,7 +1206,7 @@ function bindPair(view) {
 /* ================= 起動 ================= */
 function onStoreUpdate(cands) {
   state.candidates = cands;
-  if (!isFormRoute()) render(); else renderHeader();
+  if (!isFormRoute()) render({ keepScroll: true }); else renderHeader();
 }
 store.init();
 state.candidates = store.loadAll();
@@ -1056,8 +1281,26 @@ function createFirestoreStore(fb, roomId) {
     loadAll() { return candidates.slice(); },
     getWarning() { return warning; },
     syncState() { return { synced, pending }; },
+    // ratings は送らない。merge:true によりサーバ上の相手の★が保持される
+    // （フォームを開いている間に相手が★を変えても巻き戻らない）。
+    // kanjiOptions は配列なので merge でも丸ごと置換される（意図どおり）。
     saveCandidate(c) {
-      fb.fs.setDoc(fb.fs.doc(colRef, c.id), c).catch((e) => console.error("setDoc", e));
+      const { ratings, ...rest } = c;
+      fb.fs.setDoc(fb.fs.doc(colRef, c.id), rest, { merge: true }).catch((e) => console.error("setDoc", e));
+    },
+    // フィールド単位更新。相手の slot には絶対に触らないので、2人が相前後して
+    // 同じ候補に★を付けても双方の評価が残る。
+    // setDoc(merge) ではなく updateDoc を使う理由: 相手が削除済みの候補に★を付けたとき、
+    // setDoc だと ratings だけの幽霊 doc が生まれてしまう。updateDoc なら失敗して何も残らない。
+    setRating(id, slot, value) {
+      if (!SLOTS.includes(slot)) return;
+      const field = "ratings." + slot;
+      fb.fs.updateDoc(fb.fs.doc(colRef, id), { [field]: value == null ? fb.fs.deleteField() : value })
+        .catch((e) => {
+          // not-found = 相手が同時に削除した候補。想定内の競合なので黙って無視する
+          if (e && e.code === "not-found") return;
+          console.error("setRating", e);
+        });
     },
     deleteCandidate(id) {
       fb.fs.deleteDoc(fb.fs.doc(colRef, id)).catch((e) => console.error("deleteDoc", e));
@@ -1091,7 +1334,7 @@ async function createRoom() {
   const roomId = uuid();
   await fb.fs.setDoc(fb.fs.doc(fb.db, "rooms", roomId), { schemaVersion: SCHEMA_VERSION, createdAt: Date.now() });
   await migrateLocalToRoom(fb, roomId, state.candidates);
-  setRoomId(roomId);
+  setRoom(roomId, "a"); // ルームを作った側は a
   swapToFirestoreStore(fb, roomId);
 }
 
@@ -1099,8 +1342,14 @@ async function joinRoom(roomId) {
   const fb = await ensureFirebase();
   const roomDoc = await fb.fs.getDoc(fb.fs.doc(fb.db, "rooms", roomId));
   if (!roomDoc.exists()) return false;
-  await migrateLocalToRoom(fb, roomId, state.candidates);
-  setRoomId(roomId);
+  // 参加側は b。ローカルで付けた★は a として持っているので b へ付け替えてから合流する
+  const cands = state.candidates.map((c) => {
+    if (!c.ratings || c.ratings.a == null) return c;
+    const { a, ...restRatings } = c.ratings;
+    return { ...c, ratings: { ...restRatings, b: a } };
+  });
+  await migrateLocalToRoom(fb, roomId, cands);
+  setRoom(roomId, "b");
   swapToFirestoreStore(fb, roomId);
   return true;
 }

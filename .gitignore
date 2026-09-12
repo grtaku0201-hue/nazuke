@@ -6,3 +6,6 @@ export*.json
 # OS
 Thumbs.db
 .DS_Store
+
+# ローカルの権限設定（端末ごと）
+.claude/settings.local.json
